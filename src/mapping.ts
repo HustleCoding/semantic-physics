@@ -30,7 +30,7 @@ export const THRESHOLDS = {
   explosive: 0.6,
   liquid: 0.6,
   gas: 0.6,
-  lighterThanAir: 0.6,
+  lighterThanAir: 0.5,
   interaction: 0.68,
   waterDrag: 0.05,
   burnDuration: 6,
