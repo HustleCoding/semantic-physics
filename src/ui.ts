@@ -111,14 +111,17 @@ export function createUi(onSubmit: (noun: string) => void): UiController {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const noun = input.value.trim();
-    if (!noun) return;
+    if (!noun) {
+      controller.showError("Type a noun first — try “rubber duck”.");
+      return;
+    }
     input.value = "";
     onSubmit(noun);
   });
   root.querySelectorAll<HTMLButtonElement>("[data-noun]").forEach((chip) => {
     chip.addEventListener("click", () => onSubmit(chip.dataset.noun || ""));
   });
-  return {
+  const controller: UiController = {
     showSpawn(result) {
       const mode = result.response.mock ? "mock" : result.response.cached ? "cached" : "live";
       modeDot.replaceChildren(el("i", `dot${mode === "mock" ? " mock" : ""}`), document.createTextNode(result.response.model || "jev-latest"));
@@ -143,4 +146,5 @@ export function createUi(onSubmit: (noun: string) => void): UiController {
       objectCount.textContent = count === 0 ? "empty" : `${count} ${count === 1 ? "object" : "objects"}`;
     },
   };
+  return controller;
 }
