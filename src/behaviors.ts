@@ -98,7 +98,7 @@ function handleMagnetism(object: PhysicsObject) {
 function handleGas(object: PhysicsObject, context: BehaviorContext) {
   if (probability(object.answers, "gas") <= THRESHOLDS.gas) return;
   object.state.gasTime += context.dt;
-  Body.applyForce(object.body, object.body.position, { x: 0, y: -0.001 * object.body.mass });
+  Body.applyForce(object.body, object.body.position, { x: 0, y: -1.6 * context.world.engine.gravity.y * object.body.mass * 0.001 });
   if (object.state.gasTime >= THRESHOLDS.gasDuration) context.world.remove(object);
 }
 

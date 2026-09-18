@@ -141,10 +141,9 @@ function swapInteractionAnswers(answers: JsonRecord) {
   const output: JsonRecord = {};
   for (const [key, value] of Object.entries(answers)) {
     const swapped = key
-      .replace(/^a_/, "__A__")
-      .replace(/^b_/, "__B__")
-      .replace(/__A__/, "b_")
-      .replace(/__B__/, "a_");
+      .split("_")
+      .map((part) => (part === "a" ? "b" : part === "b" ? "a" : part))
+      .join("_");
     output[swapped] = value;
   }
   return output;
