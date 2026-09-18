@@ -163,6 +163,12 @@ async function upstream(env: Env, state: JsonRecord, questions: unknown) {
   return await response.json() as { answers: JsonRecord; usage?: JsonRecord; model?: string };
 }
 
+function errorMessage(error: unknown, env: Env) {
+  const message = error instanceof Error ? error.message : "TypeSafe request failed";
+  const key = processKey(env);
+  return key ? message.replaceAll(key, "[redacted]") : message;
+}
+
 async function body(c: { req: { json: <T>() => Promise<T> } }) {
   try {
     return await c.req.json<JsonRecord>();
@@ -186,7 +192,7 @@ app.post("/api/judge", async (c) => {
     await writeCache(c.env, key, stored);
     return c.json({ object, ...stored, latencyMs: Date.now() - started, cached: false });
   } catch (error) {
-    return c.json({ error: error instanceof Error ? error.message : "TypeSafe request failed" }, 502);
+    return c.json({ error: errorMessage(error, c.env) }, 502);
   }
 });
 
@@ -208,7 +214,7 @@ app.post("/api/interact", async (c) => {
     } catch (error) {
       throw error;
     }
-  })().catch((error) => ({ error: error instanceof Error ? error.message : "TypeSafe request failed" }));
+  })().catch((error) => ({ error: errorMessage(error, c.env) }));
   if ("error" in stored) return c.json({ error: stored.error }, 502);
   const reversed = a.toLowerCase() !== sortedA.toLowerCase();
   return c.json({ a, b, answers: reversed ? swapInteractionAnswers(stored.answers) : stored.answers, usage: stored.usage, model: stored.model, mock: stored.mock, latencyMs: Date.now() - started, cached: Boolean(cached) });
