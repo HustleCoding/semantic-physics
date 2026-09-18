@@ -199,8 +199,22 @@ export class PhysicsWorld {
   private draw() {
     const { ctx } = this;
     ctx.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-    ctx.fillStyle = "#080d19";
+    ctx.fillStyle = "#f8f4ec";
     ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    ctx.strokeStyle = "rgba(28,26,23,.06)";
+    ctx.lineWidth = 1;
+    for (let x = 40; x < WORLD_WIDTH; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, WORLD_HEIGHT);
+      ctx.stroke();
+    }
+    for (let y = 40; y < WORLD_HEIGHT; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(WORLD_WIDTH, y);
+      ctx.stroke();
+    }
     this.drawZones();
     for (const object of this.objects.values()) this.drawObject(object);
     for (const particle of this.particles) {
@@ -215,25 +229,123 @@ export class PhysicsWorld {
 
   private drawZones() {
     const { ctx } = this;
-    ctx.fillStyle = "rgba(56, 163, 218, .22)";
-    ctx.fillRect(ZONES.water.x, ZONES.water.y, ZONES.water.width, ZONES.water.height);
-    ctx.fillStyle = "rgba(255, 99, 34, .17)";
-    ctx.fillRect(ZONES.fire.x, ZONES.fire.y, ZONES.fire.width, ZONES.fire.height);
-    ctx.fillStyle = "rgba(157, 104, 255, .12)";
-    ctx.fillRect(ZONES.heat.x, ZONES.heat.y, ZONES.heat.width, ZONES.heat.height);
-    ctx.fillStyle = "#7ac8ff";
-    ctx.font = "12px ui-monospace, monospace";
-    ctx.fillText("WATER", 12, 492);
-    ctx.fillStyle = "#ff8f45";
-    ctx.fillText("FIRE", 782, 578);
-    ctx.fillStyle = "#d7bcff";
-    ctx.fillText("HEAT LAMP", 425, 22);
-    ctx.fillStyle = "#5e9dff";
-    ctx.fillRect(ZONES.magnet.x, ZONES.magnet.y, ZONES.magnet.width, ZONES.magnet.height);
-    ctx.fillStyle = "#dff0ff";
-    ctx.fillText("MAGNET", 890, 195);
-    ctx.strokeStyle = "rgba(255,255,255,.12)";
-    ctx.strokeRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    const t = performance.now() / 1000;
+    const label = (text: string, x: number, y: number, color: string, align: CanvasTextAlign = "left") => {
+      ctx.fillStyle = color;
+      ctx.font = "500 10px 'JetBrains Mono', ui-monospace, monospace";
+      ctx.textAlign = align;
+      ctx.fillText(text.toUpperCase().split("").join("\u200a"), x, y);
+      ctx.textAlign = "left";
+    };
+
+    // water: gradient body + animated surface
+    const w = ZONES.water;
+    const waterGradient = ctx.createLinearGradient(0, w.y, 0, w.y + w.height);
+    waterGradient.addColorStop(0, "rgba(61,123,184,.30)");
+    waterGradient.addColorStop(1, "rgba(61,123,184,.55)");
+    ctx.fillStyle = waterGradient;
+    ctx.beginPath();
+    ctx.moveTo(w.x, w.y + w.height);
+    for (let x = w.x; x <= w.x + w.width; x += 6) {
+      ctx.lineTo(x, w.y + Math.sin(x / 28 + t * 2.2) * 2.5 + Math.sin(x / 11 - t * 3) * 1.2);
+    }
+    ctx.lineTo(w.x + w.width, w.y + w.height);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#3d7bb8";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let x = w.x; x <= w.x + w.width; x += 6) {
+      const y = w.y + Math.sin(x / 28 + t * 2.2) * 2.5 + Math.sin(x / 11 - t * 3) * 1.2;
+      if (x === w.x) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    label("water", w.x + 12, w.y + 22, "#2d5f92");
+
+    // fire: bed of embers + flickering flames
+    const f = ZONES.fire;
+    ctx.fillStyle = "#1c1a17";
+    ctx.fillRect(f.x, f.y + f.height - 8, f.width, 8);
+    for (let i = 0; i < 14; i++) {
+      const fx = f.x + 8 + (i / 13) * (f.width - 16);
+      const flicker = Math.sin(t * 7 + i * 1.7) * 0.5 + 0.5;
+      const h = 24 + flicker * 26 + (i % 3) * 6;
+      const half = 7 + (i % 2) * 3;
+      const grad = ctx.createLinearGradient(0, f.y + f.height - 8, 0, f.y + f.height - 8 - h);
+      grad.addColorStop(0, "rgba(217,84,43,.95)");
+      grad.addColorStop(0.6, "rgba(240,160,60,.85)");
+      grad.addColorStop(1, "rgba(255,220,120,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(fx - half, f.y + f.height - 8);
+      ctx.quadraticCurveTo(fx - half * 0.4, f.y + f.height - 8 - h * 0.6, fx + Math.sin(t * 5 + i) * 3, f.y + f.height - 8 - h);
+      ctx.quadraticCurveTo(fx + half * 0.4, f.y + f.height - 8 - h * 0.6, fx + half, f.y + f.height - 8);
+      ctx.closePath();
+      ctx.fill();
+    }
+    label("fire", f.x + f.width / 2, f.y + f.height - 14, "#f8f4ec", "center");
+
+    // heat lamp: fixture + warm cone
+    const h = ZONES.heat;
+    const cx = h.x + h.width / 2;
+    const cone = ctx.createLinearGradient(0, 0, 0, h.height);
+    cone.addColorStop(0, "rgba(200,120,58,.35)");
+    cone.addColorStop(1, "rgba(200,120,58,0)");
+    ctx.fillStyle = cone;
+    ctx.beginPath();
+    ctx.moveTo(cx - 22, 10);
+    ctx.lineTo(cx + 22, 10);
+    ctx.lineTo(h.x + h.width, h.height);
+    ctx.lineTo(h.x, h.height);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#1c1a17";
+    ctx.fillRect(cx - 1.5, 0, 3, 8);
+    ctx.beginPath();
+    ctx.moveTo(cx - 24, 8);
+    ctx.lineTo(cx + 24, 8);
+    ctx.lineTo(cx + 16, 16);
+    ctx.lineTo(cx - 16, 16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,205,120,${0.75 + Math.sin(t * 3) * 0.15})`;
+    ctx.beginPath();
+    ctx.arc(cx, 17, 5, 0, Math.PI * 2);
+    ctx.fill();
+    label("heat lamp", cx, h.height + 14, "#a15f2b", "center");
+
+    // magnet: red/blue bar with ink outline
+    const m = ZONES.magnet;
+    ctx.fillStyle = "#d9542b";
+    ctx.fillRect(m.x, m.y, m.width, m.height / 2);
+    ctx.fillStyle = "#3d7bb8";
+    ctx.fillRect(m.x, m.y + m.height / 2, m.width, m.height / 2);
+    ctx.strokeStyle = "#1c1a17";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(m.x + 0.75, m.y + 0.75, m.width - 1.5, m.height - 1.5);
+    ctx.fillStyle = "#f8f4ec";
+    ctx.font = "700 12px 'JetBrains Mono', ui-monospace, monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("N", m.x + m.width / 2, m.y + 25);
+    ctx.fillText("S", m.x + m.width / 2, m.y + m.height - 15);
+    ctx.textAlign = "left";
+    ctx.strokeStyle = "rgba(28,26,23,.25)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.arc(m.x + m.width / 2, m.y + m.height / 2, m.height / 2 + i * 12 + Math.sin(t * 2 + i) * 1.5, Math.PI * 0.6, Math.PI * 1.4);
+      ctx.stroke();
+    }
+    label("magnet", m.x - 8, m.y + m.height / 2 + 4, "#4a453d", "right");
+
+    // floor line
+    ctx.strokeStyle = "#1c1a17";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, WORLD_HEIGHT - 0.75);
+    ctx.lineTo(WORLD_WIDTH, WORLD_HEIGHT - 0.75);
+    ctx.stroke();
   }
 
   private drawObject(object: PhysicsObject) {
@@ -246,19 +358,26 @@ export class PhysicsWorld {
     ctx.moveTo(vertices[0].x - object.body.position.x, vertices[0].y - object.body.position.y);
     for (const vertex of vertices.slice(1)) ctx.lineTo(vertex.x - object.body.position.x, vertex.y - object.body.position.y);
     ctx.closePath();
-    ctx.fillStyle = object.state.burning ? "#ff6b35" : object.color;
-    ctx.globalAlpha = object.material === "gas" ? Math.max(0.1, 1 - object.state.gasTime / THRESHOLDS.gasDuration) : object.material === "liquid" ? 0.72 : 0.94;
-    ctx.shadowColor = object.material === "energy" ? "#ff8f45" : "transparent";
-    ctx.shadowBlur = object.material === "energy" ? 18 : 0;
+    ctx.fillStyle = object.state.burning ? "#d9542b" : object.color;
+    ctx.globalAlpha = object.material === "gas" ? Math.max(0.1, 1 - object.state.gasTime / THRESHOLDS.gasDuration) : object.material === "liquid" ? 0.7 : 1;
+    ctx.shadowColor = object.state.burning || object.material === "energy" ? "rgba(217,84,43,.8)" : "rgba(28,26,23,.18)";
+    ctx.shadowBlur = object.state.burning || object.material === "energy" ? 22 : 8;
+    ctx.shadowOffsetY = object.state.burning ? 0 : 3;
     ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,.45)";
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.lineWidth = 1.75;
+    ctx.strokeStyle = object.material === "gas" ? "rgba(28,26,23,.35)" : "#1c1a17";
     ctx.stroke();
     ctx.restore();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = "#e7eefc";
-    ctx.font = "12px Inter, system-ui, sans-serif";
+    const radius = Math.max(...vertices.map((v) => Math.hypot(v.x - object.body.position.x, v.y - object.body.position.y)));
+    ctx.fillStyle = "#1c1a17";
+    ctx.font = "italic 13px 'Instrument Serif', Georgia, serif";
     ctx.textAlign = "center";
-    ctx.fillText(object.noun, object.body.position.x, object.body.position.y - 14);
+    const below = object.body.position.y + radius + 14;
+    ctx.fillText(object.noun, object.body.position.x, below > WORLD_HEIGHT - 6 ? object.body.position.y - radius - 6 : below);
     ctx.textAlign = "left";
   }
 }

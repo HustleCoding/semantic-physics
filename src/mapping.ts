@@ -76,14 +76,14 @@ export function choice(answers: AnswerMap): PhysicsMaterial {
 
 export function materialColor(material: PhysicsMaterial, seed: string): string {
   const palette: Record<PhysicsMaterial, string> = {
-    metal: "#9bb8d6",
-    wood: "#b97943",
-    stone: "#9096a3",
+    metal: "#8e99a8",
+    wood: "#c48a4f",
+    stone: "#a8a39a",
     plastic: hashColor(seed),
-    organic: "#72c28f",
-    liquid: "#56b9e8",
-    gas: "#dbe8ff",
-    energy: "#ff8f45",
+    organic: "#7fb27a",
+    liquid: "#6fa8d6",
+    gas: "#e6e9f0",
+    energy: "#f0a03c",
   };
   return palette[material];
 }
@@ -92,7 +92,7 @@ function hashColor(value: string): string {
   let hash = 0;
   for (const char of value) hash = (hash * 31 + char.charCodeAt(0)) | 0;
   const hue = Math.abs(hash) % 360;
-  return `hsl(${hue} 75% 62%)`;
+  return `hsl(${hue} 62% 66%)`;
 }
 
 export function physicsParameters(answers: AnswerMap) {
