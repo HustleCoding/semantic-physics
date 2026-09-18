@@ -3,7 +3,7 @@ import type { AnswerMap, PhysicsMaterial } from "./types";
 // ---- Mapping (code owns all math) ----
 // weight score w in [0,4]: mass = 0.1 * 6^w  (0.1 .. ~130)
 // size score s in [0,4]: radius px = 10 + 12*s  (10 .. 58)
-// hardness h in [0,4]: friction = 0.9 - 0.18*h ; shatter threshold speed = 4 + 3*h (only used if fragile>0.5)
+// hardness h in [0,4]: friction = 0.9 - 0.18*h ; shatter threshold speed = 6 + 3*h (only used if fragile>0.5)
 // restitution = bouncy>0.5 ? 0.85 : 0.1 + 0.1*(bouncy)  ; sticky>0.6 -> restitution 0, friction 1, frictionStatic 10
 // roundness r: <0.75 rod (rect 4:1), <1.75 box (rect 1:1 rounded), <2.5 irregular (hexagon w/ jitter), else circle
 // floats>0.5 -> buoyancy force in water = mass*g*1.6 ; else sink (density irrelevant; water just adds drag 0.05)
@@ -30,6 +30,7 @@ export const THRESHOLDS = {
   explosive: 0.6,
   liquid: 0.6,
   gas: 0.6,
+  lighterThanAir: 0.6,
   interaction: 0.68,
   waterDrag: 0.05,
   burnDuration: 6,
@@ -56,6 +57,7 @@ const NOULS = [
   "edible",
   "liquid",
   "gas",
+  "lighter_than_air",
 ] as const;
 
 export function probability(answers: AnswerMap, key: string): number {
@@ -108,7 +110,7 @@ export function physicsParameters(answers: AnswerMap) {
     mass: 0.1 * 6 ** w,
     radius: 10 + 12 * s,
     friction: 0.9 - 0.18 * h,
-    shatterSpeed: 4 + 3 * h,
+    shatterSpeed: 6 + 3 * h,
     restitution: sticky > THRESHOLDS.sticky ? 0 : bouncy > THRESHOLDS.bouncy ? 0.85 : 0.1 + 0.1 * bouncy,
     frictionStatic: sticky > THRESHOLDS.sticky ? 10 : 0.5,
     shape,

@@ -72,6 +72,7 @@ function mockAnswers(object: string): JsonRecord {
   const alive = /\b(cat|dog|mouse|person|bird|fish|human|animal)\b/.test(lower) ? 0.95 : randomFrom(seed, 4) * 0.35;
   const liquid = /\b(water|oil|milk|juice|honey|gel|soup)\b/.test(lower) ? 0.93 : 0.04;
   const gas = /\b(air|smoke|steam|gas|helium|oxygen)\b/.test(lower) ? 0.95 : 0.02;
+  const lighterThanAir = /\b(balloon|bubble|blimp|helium)\b/.test(lower) ? 0.94 : 0.03;
   const edible = /\b(sugar|food|apple|bread|cake|candy|milk|water)\b/.test(lower) ? 0.9 : 0.1;
   const explosive = /\b(bomb|firework|grenade|dynamite)\b/.test(lower) ? 0.95 : 0.02;
   const sticky = /\b(glue|honey|gum|jelly|tape|syrup)\b/.test(lower) ? 0.93 : 0.06;
@@ -111,6 +112,7 @@ function mockAnswers(object: string): JsonRecord {
     edible: { type: "noul", noul: edible },
     liquid: { type: "noul", noul: liquid },
     gas: { type: "noul", noul: gas },
+    lighter_than_air: { type: "noul", noul: lighterThanAir },
     weight: score(weight),
     size: score(size),
     hardness: score(hardness),
@@ -182,7 +184,7 @@ app.post("/api/judge", async (c) => {
   if (!input || !validNoun(input.object)) return c.json({ error: "object must be 1–40 characters: letters, digits, spaces, hyphens, or apostrophes" }, 400);
   const object = input.object.trim();
   const noun = normalizeNoun(object);
-  const key = `judge:v1:${noun}`;
+  const key = `judge:v2:${noun}`;
   const started = Date.now();
   const cached = await readCache<{ answers: JsonRecord; usage?: JsonRecord; model?: string; mock?: boolean }>(c.env, key);
   if (cached) return c.json({ object, ...cached, latencyMs: Date.now() - started, cached: true });

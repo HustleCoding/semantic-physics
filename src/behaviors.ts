@@ -1,6 +1,6 @@
 import { Body, Vector } from "matter-js";
 import type { PhysicsObject } from "./types";
-import { probability, score, THRESHOLDS } from "./mapping";
+import { probability, THRESHOLDS } from "./mapping";
 import { ZONES, type Particle, type PhysicsWorld } from "./world";
 
 export type BehaviorContext = {
@@ -37,6 +37,7 @@ function burn(object: PhysicsObject, context: BehaviorContext) {
     Body.scale(object.body, 0.55, 0.55);
     Body.setMass(object.body, 0.1);
     object.state.burning = false;
+    object.state.burned = true;
     object.state.burnTime = 0;
   }
 }
@@ -101,6 +102,14 @@ function handleGas(object: PhysicsObject, context: BehaviorContext) {
   if (object.state.gasTime >= THRESHOLDS.gasDuration) context.world.remove(object);
 }
 
+function handleBuoyantAir(object: PhysicsObject, context: BehaviorContext) {
+  if (probability(object.answers, "lighter_than_air") <= THRESHOLDS.lighterThanAir || probability(object.answers, "gas") > THRESHOLDS.gas) return;
+  Body.applyForce(object.body, object.body.position, {
+    x: 0,
+    y: -1.15 * context.world.engine.gravity.y * object.body.mass * 0.001,
+  });
+}
+
 function handleAlive(object: PhysicsObject, context: BehaviorContext) {
   if (probability(object.answers, "alive") <= THRESHOLDS.alive) return;
   object.state.nextHop -= context.dt;
@@ -113,15 +122,14 @@ export function tickBehaviors(context: BehaviorContext) {
   for (const object of [...context.world.objects.values()]) {
     if (object.state.dead) continue;
     const point = object.body.position;
-    if (probability(object.answers, "flammable") > THRESHOLDS.flammable && inside(point, ZONES.fire)) burn(object, context);
-    if (probability(object.answers, "explosive") > THRESHOLDS.explosive && object.state.burning) explode(object, context);
+    const ignites = probability(object.answers, "flammable") > THRESHOLDS.flammable || probability(object.answers, "explosive") > THRESHOLDS.explosive;
+    if (!object.state.burned && ignites && inside(point, ZONES.fire)) burn(object, context);
+    if (!object.state.burned && probability(object.answers, "explosive") > THRESHOLDS.explosive && object.state.burning) explode(object, context);
     handleWater(object, context);
     handleHeat(object, context);
     handleMagnetism(object);
     handleGas(object, context);
+    handleBuoyantAir(object, context);
     handleAlive(object, context);
-    if (probability(object.answers, "fragile") > THRESHOLDS.fragile && object.body.speed > 4 + 3 * score(object.answers, "hardness")) {
-      context.world.remove(object, true);
-    }
   }
 }

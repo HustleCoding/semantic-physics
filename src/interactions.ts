@@ -15,7 +15,7 @@ export class InteractionController {
   onCollision(bodyA: Matter.Body, bodyB: Matter.Body) {
     const a = this.world.objects.get(bodyA.id);
     const b = this.world.objects.get(bodyB.id);
-    if (!a || !b || a.state.dead || b.state.dead || a.clusterId === b.clusterId) return;
+    if (!a || !b || a.state.dead || b.state.dead || (a.clusterId !== undefined && a.clusterId === b.clusterId)) return;
     const key = [a.id, b.id].sort().join("|");
     if (this.seen.has(key)) return;
     this.seen.add(key);

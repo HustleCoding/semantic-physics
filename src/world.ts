@@ -1,5 +1,6 @@
 import {
   Bodies,
+  Body,
   Composite,
   Constraint,
   Engine,
@@ -10,7 +11,7 @@ import {
   Vector,
 } from "matter-js";
 import type { AnswerMap, PhysicsObject } from "./types";
-import { physicsParameters, materialColor, THRESHOLDS } from "./mapping";
+import { physicsParameters, materialColor, probability, THRESHOLDS } from "./mapping";
 import { tickBehaviors, type BehaviorContext } from "./behaviors";
 import { InteractionController } from "./interactions";
 
@@ -36,6 +37,7 @@ export class PhysicsWorld {
   private lastTime = performance.now();
   private animation = 0;
   private objectCounter = 0;
+  private mouseConstraint?: MouseConstraint;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -46,7 +48,11 @@ export class PhysicsWorld {
     this.setupArena();
     this.setupMouse();
     Events.on(this.engine, "collisionStart", (event) => {
-      for (const pair of event.pairs) this.interaction.onCollision(pair.bodyA, pair.bodyB);
+      for (const pair of event.pairs) {
+        this.interaction.onCollision(pair.bodyA, pair.bodyB);
+        this.checkShatter(pair.bodyA, pair.bodyB);
+        this.checkShatter(pair.bodyB, pair.bodyA);
+      }
     });
   }
 
@@ -144,12 +150,14 @@ export class PhysicsWorld {
       baseMass: parameters.mass,
       state: {
         burning: false,
+        burned: false,
         burnTime: 0,
         inWaterTime: 0,
         inHeatTime: 0,
         gasTime: 0,
         melted: false,
         dead: false,
+        spawnedAt: performance.now() / 1000,
         nextHop: 0.8 + Math.random() * 1.2,
         interactionKeys: new Set(),
       },
@@ -159,10 +167,10 @@ export class PhysicsWorld {
   private setupArena() {
     const wallOptions = { isStatic: true, label: "wall", restitution: 0.2 };
     Composite.add(this.engine.world, [
-      Bodies.rectangle(WORLD_WIDTH / 2, -10, WORLD_WIDTH, 20, wallOptions),
-      Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT + 10, WORLD_WIDTH, 20, wallOptions),
-      Bodies.rectangle(-10, WORLD_HEIGHT / 2, 20, WORLD_HEIGHT, wallOptions),
-      Bodies.rectangle(WORLD_WIDTH + 10, WORLD_HEIGHT / 2, 20, WORLD_HEIGHT, wallOptions),
+      Bodies.rectangle(WORLD_WIDTH / 2, -100, WORLD_WIDTH, 200, wallOptions),
+      Bodies.rectangle(WORLD_WIDTH / 2, WORLD_HEIGHT + 100, WORLD_WIDTH, 200, wallOptions),
+      Bodies.rectangle(-100, WORLD_HEIGHT / 2, 200, WORLD_HEIGHT, wallOptions),
+      Bodies.rectangle(WORLD_WIDTH + 100, WORLD_HEIGHT / 2, 200, WORLD_HEIGHT, wallOptions),
       Bodies.rectangle(945, 240, 30, 80, { ...wallOptions, label: "magnet-zone" }),
     ]);
   }
@@ -173,6 +181,7 @@ export class PhysicsWorld {
       mouse,
       constraint: { stiffness: 0.2, render: { visible: false } },
     });
+    this.mouseConstraint = constraint;
     Composite.add(this.engine.world, constraint);
     this.canvas.addEventListener("mouseleave", () => {
       mouse.button = -1;
@@ -186,6 +195,16 @@ export class PhysicsWorld {
       now: performance.now() / 1000,
     };
     tickBehaviors(context);
+    for (const object of this.objects.values()) {
+      const { x, y } = object.body.position;
+      if (x < 0 || x > WORLD_WIDTH || y < 0 || y > WORLD_HEIGHT) {
+        Body.setPosition(object.body, {
+          x: Math.max(0, Math.min(WORLD_WIDTH, x)),
+          y: Math.max(0, Math.min(WORLD_HEIGHT, y)),
+        });
+        Body.setVelocity(object.body, { x: 0, y: 0 });
+      }
+    }
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const particle = this.particles[i];
       particle.life -= dt;
@@ -194,6 +213,15 @@ export class PhysicsWorld {
       particle.vy += 0.06;
       if (particle.life <= 0) this.particles.splice(i, 1);
     }
+  }
+
+  private checkShatter(body: Matter.Body, otherBody: Matter.Body) {
+    const object = this.objects.get(body.id);
+    if (!object || object.state.dead || probability(object.answers, "fragile") <= THRESHOLDS.fragile) return;
+    if (this.mouseConstraint?.body === body) return;
+    if (performance.now() / 1000 - object.state.spawnedAt <= 1.5) return;
+    const relativeSpeed = Vector.magnitude(Vector.sub(body.velocity, otherBody.velocity));
+    if (relativeSpeed > physicsParameters(object.answers).shatterSpeed) this.remove(object, true);
   }
 
   private draw() {

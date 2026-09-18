@@ -60,12 +60,14 @@ export type PhysicsObject = {
   material: PhysicsMaterial;
   state: {
     burning: boolean;
+    burned: boolean;
     burnTime: number;
     inWaterTime: number;
     inHeatTime: number;
     gasTime: number;
     melted: boolean;
     dead: boolean;
+    spawnedAt: number;
     nextHop: number;
     interactionKeys: Set<string>;
   };

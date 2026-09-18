@@ -22,6 +22,7 @@ export const OBJECT_QUESTIONS = {
   edible: { type: "noul", instructions: "Is this object something a human would normally eat or drink?" },
   liquid: { type: "noul", instructions: "Is this object a liquid at room temperature?" },
   gas: { type: "noul", instructions: "Is this object a gas or vapor at room temperature (lighter than air, rises)?" },
+  lighter_than_air: { type: "noul", instructions: "Does this object float upward in air on its own, like a helium balloon or a bubble?" },
 
   // ---- Scores: continuous physical properties ----
   weight: {
